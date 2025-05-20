@@ -1,31 +1,88 @@
 <?php
 /**
- * This code calls the server at notifications.paidmembershipspro.com
- * to see if there are any notifications to display to the user.
- * Notifications are shown on the PMPro settings pages in the dashboard.
- * Runs on the wp_ajax_pmpro_notifications hook.
- * Note we exit instead of returning because this is loaded via AJAX.
+ * Example usage inside your plugin bootstrap:
+ *
+ * $notifier = new Gocodebox_Banner_Notifier( array(
+ *     'prefix'            => 'myplugin',               // will hook wp_ajax_myplugin_notifications, etc.
+ *     'notifications_url' => 'https://example.com/notifications.json',
+ * ) );
  */
-function pmpro_notifications() {
-	if ( current_user_can( 'manage_options' ) ) {
-		$notification = pmpro_get_next_notification();
-		if ( empty( $notification ) ) {
-			exit;
+
+class Gocodebox_Banner_Notifier {
+
+	/** @var string slug used in hooks, filters, option / meta keys, etc. */
+	private $prefix;
+
+	/** @var string plugin / module version (needed for transient-key separation) */
+	private $version;
+
+	/** @var string remote JSON feed for notifications */
+	private $notifications_url;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param array $args {
+	 *     Optional. Either a string (used as the prefix) or an associative array.
+	 *
+	 *     @type string $prefix Unique slug for hooks, options, transients, etc.
+	 *     @type string $notifications_url Feed URL.
+	 * }
+	 *
+	 * @throws Exception
+	 */
+	public function __construct( $args = array() ) {
+
+		// Accept just a string prefix for convenience.
+		if ( is_string( $args ) ) {
+			$args = array( 'prefix' => $args );
 		}
 
-		$paused = pmpro_notifications_pause();
-		if ( $paused && empty( $_REQUEST['pmpro_notification'] ) && $notification->priority !== 1 ) {
-			exit;
+		$defaults = array(
+			'prefix'            => '',
+			'notifications_url' => '',
+			'version'           => '',
+		);
+		$args     = wp_parse_args( $args, $defaults );
+
+		if ( ! $args['prefix'] || ! $args['notifications_url'] || ! $args['version'] ) {
+			throw new Exception( 'Missing required arguments: prefix, version and/or notifications_url.' );
 		}
 
-		// Okay show the notification.
-		?>
-		<div class="pmpro_notification pmpro_notification-<?php echo esc_attr( $notification->type ); ?>" id="<?php echo esc_attr( $notification->id ); ?>">
-			<?php if ( $notification->dismissable ) { ?>
-				<button type="button" class="pmpro-notice-button notice-dismiss" value="<?php echo esc_attr( $notification->id ); ?>"><span class="screen-reader-text"><?php esc_html_e( 'Dismiss this notice.', 'paid-memberships-pro' ); ?></span></button>
-			<?php } ?>
-			<div class="pmpro_notification-icon"><span class="dashicons dashicons-<?php echo esc_attr( $notification->dashicon ); ?>"></span></div>
-			<div class="pmpro_notification-content">
+		$this->prefix            = sanitize_key( $args['prefix'] );
+		$this->version           = sanitize_title( $args['version'] );
+		$this->notifications_url = sanitize_url( $args['notifications_url'] );
+
+		add_action( "wp_ajax_{$this->prefix}_notifications", array( $this, 'notifications' ) );
+
+		add_action( "wp_ajax_{$this->prefix}_hide_notice", array( $this, 'hide_notice' ) );
+	}
+
+	/**
+	 * This code calls the server at $this->notifications_url
+	 * to see if there are any notifications to display to the user.
+	 * Runs on the wp_ajax_{$this->prefix}_notifications hook.
+	 * Note we exit instead of returning because this is loaded via AJAX.
+	 */
+	function notifications() {
+		if ( current_user_can( 'manage_options' ) ) {
+			$notification = $this->get_next_notification();
+			if ( empty( $notification ) ) {
+				exit;
+			}
+
+			$paused = pmpro_notifications_pause();
+			if ( $paused && empty( $_REQUEST[ "{$this->prefix}_notification" ] ) && $notification->priority !== 1 ) {
+				exit;
+			}
+
+			?>
+			<div class="<?php echo esc_attr( $this->prefix ); ?>_notification <?php echo esc_attr( $this->prefix ); ?>_notification-<?php echo esc_attr( $notification->type ); ?>" id="<?php echo esc_attr( $notification->id ); ?>">
+				<?php if ( $notification->dismissable ) { ?>
+				<button type="button" class="<?php echo esc_html( $this->prefix ); ?>-notice-button notice-dismiss" value="<?php echo esc_attr( $notification->id ); ?>"><span class="screen-reader-text"><?php esc_html_e( 'Dismiss this notice.', 'gocodebox-banner-notifications' ); ?></span></button>
+				<?php } ?>
+			<div class="<?php echo esc_attr( $this->prefix ); ?>_notification-icon"><span class="dashicons dashicons-<?php echo esc_attr( $notification->dashicon ); ?>"></span></div>
+			<div class="<?php echo esc_attr( $this->prefix ); ?>_notification-content">
 				<h3><?php echo esc_html( $notification->title ); ?></h3>
 				<?php
 				$allowed_html = array(
@@ -50,116 +107,118 @@ function pmpro_notifications() {
 				);
 				echo wp_kses( $notification->content, $allowed_html );
 				?>
-			</div> <!-- end pmpro_notification-content -->
-		</div> <!-- end pmpro_notification -->
-		<?php
+			</div> <!-- end <?php echo esc_html( $this->prefix ); ?>_notification-content -->
+			</div> <!-- end <?php echo esc_html( $this->prefix ); ?>_notification -->
+			<?php
+		}
+
+		exit;
 	}
 
-	exit;
-}
-add_action( 'wp_ajax_pmpro_notifications', 'pmpro_notifications' );
 
-/**
- * Get the highest priority applicable notification from the list.
- */
-function pmpro_get_next_notification() {
-	global $current_user;
-	if ( empty( $current_user->ID ) ) {
-		return false;
-	}
+	/**
+	 * Get the highest priority applicable notification from the list.
+	 */
+	function get_next_notification() {
+		global $current_user;
+		if ( empty( $current_user->ID ) ) {
+			return false;
+		}
 
-	// If debugging, clear the transient and get a specific notification.
-	if ( ! empty( $_REQUEST['pmpro_notification'] ) ) {
-		delete_transient( 'pmpro_notifications_' . PMPRO_VERSION );
-		$pmpro_notifications = pmpro_get_all_notifications();
+		// If debugging, clear the transient and get a specific notification.
+		if ( ! empty( $_REQUEST[ "{$this->prefix}_notification" ] ) ) {
+			delete_transient( "{$this->prefix}_notifications_{$this->version}" );
+			$notifications = $this->get_all_notifications();
 
-		if ( ! empty( $pmpro_notifications ) ) {
-			foreach ( $pmpro_notifications as $notification ) {
-				if ( $notification->id == $_REQUEST['pmpro_notification'] ) {
-					return $notification;
+			if ( ! empty( $notifications ) ) {
+				foreach ( $notifications as $notification ) {
+					if ( $notification->id == $_REQUEST[ "{$this->prefix}_notification" ] ) {
+						return $notification;
+					}
 				}
+
+				return false;
+			} else {
+				return false;
+			}
+		}
+
+		// Get all applicable notifications.
+		$notifications = $this->get_all_notifications();
+		if ( empty( $notifications ) ) {
+			return false;
+		}
+
+		// Filter out archived notifications.
+		$filtered_notifications = array();
+		$archived_notifications = get_user_meta( $current_user->ID, "{$this->prefix}_archived_notifications", true );
+		foreach ( $notifications as $notification ) {
+			if ( ( is_array( $archived_notifications ) && array_key_exists( $notification->id, $archived_notifications ) ) ) {
+				continue;
 			}
 
-			return false;
+			$filtered_notifications[] = $notification;
+		}
+
+		// Return the first one.
+		if ( ! empty( $filtered_notifications ) ) {
+			$next_notification = $filtered_notifications[0];
 		} else {
-			return false;
-		}
-	}
-
-	// Get all applicable notifications.
-	$pmpro_notifications = pmpro_get_all_notifications();
-	if ( empty( $pmpro_notifications ) ) {
-		return false;
-	}
-
-	// Filter out archived notifications.
-	$pmpro_filtered_notifications = array();
-	$archived_notifications       = get_user_meta( $current_user->ID, 'pmpro_archived_notifications', true );
-	foreach ( $pmpro_notifications as $notification ) {
-		if ( ( is_array( $archived_notifications ) && array_key_exists( $notification->id, $archived_notifications ) ) ) {
-			continue;
+			$next_notification = false;
 		}
 
-		$pmpro_filtered_notifications[] = $notification;
+		return $next_notification;
 	}
 
-	// Return the first one.
-	if ( ! empty( $pmpro_filtered_notifications ) ) {
-		$next_notification = $pmpro_filtered_notifications[0];
-	} else {
-		$next_notification = false;
-	}
+	/**
+	 * Get notifications from the notification server.
+	 */
+	function get_all_notifications() {
+		$notifications = get_transient( "{$this->prefix}_notifications_{$this->version}" );
 
-	return $next_notification;
+		if ( empty( $notifications ) ) {
+			// Set to NULL in case the below times out or fails, this way we only check once a day.
+			set_transient( 'pmpro_notifications_' . PMPRO_VERSION, 'NULL', 86400 );
+
+			// We use the filter to hit our testing servers.
+			$notification_url = apply_filters( "{$this->prefix}_notifications_url", esc_url( $this->notifications_url ) );
+
+			// Get notifications.
+			$remote_notifications = wp_remote_get( $notification_url );
+			$notifications        = json_decode( wp_remote_retrieve_body( $remote_notifications ) );
+
+			// Update transient if we got something.
+			if ( ! empty( $notifications ) ) {
+				set_transient( "{$this->prefix}_notifications_{$this->version}", $notifications, 86400 );
+			}
+		}
+
+		if ( ! is_array( $notifications ) ) {
+			$notifications = array();
+		}
+
+		// Filter notifications by start/end date.
+		$active_notifications = array();
+		foreach ( $notifications as $notification ) {
+			$active_notifications[] = $notification;
+		}
+
+		// Filter out notifications based on show/hide rules.
+		$applicable_notifications = array();
+		foreach ( $active_notifications as $notification ) {
+			if ( pmpro_is_notification_applicable( $notification ) ) {
+				$applicable_notifications[] = $notification;
+			}
+		}
+
+		// Sort by priority.
+		$applicable_notifications = wp_list_sort( $applicable_notifications, 'priority' );
+
+		return $applicable_notifications;
+	}
 }
 
-/**
- * Get notifications from the notification server.
- */
-function pmpro_get_all_notifications() {
-	$pmpro_notifications = get_transient( 'pmpro_notifications_' . PMPRO_VERSION );
 
-	if ( empty( $pmpro_notifications ) ) {
-		// Set to NULL in case the below times out or fails, this way we only check once a day.
-		set_transient( 'pmpro_notifications_' . PMPRO_VERSION, 'NULL', 86400 );
-
-		// We use the filter to hit our testing servers.
-		$pmpro_notification_url = apply_filters( 'pmpro_notifications_url', esc_url( 'https://notifications.paidmembershipspro.com/v2/notifications.json' ) );
-
-		// Get notifications.
-		$remote_notifications = wp_remote_get( $pmpro_notification_url );
-		$pmpro_notifications  = json_decode( wp_remote_retrieve_body( $remote_notifications ) );
-
-		// Update transient if we got something.
-		if ( ! empty( $pmpro_notifications ) ) {
-			set_transient( 'pmpro_notifications_' . PMPRO_VERSION, $pmpro_notifications, 86400 );
-		}
-	}
-
-	// We expect an array.
-	if ( ! is_array( $pmpro_notifications ) ) {
-		$pmpro_notifications = array();
-	}
-
-	// Filter notifications by start/end date.
-	$pmpro_active_notifications = array();
-	foreach ( $pmpro_notifications as $notification ) {
-		$pmpro_active_notifications[] = $notification;
-	}
-
-	// Filter out notifications based on show/hide rules.
-	$pmpro_applicable_notifications = array();
-	foreach ( $pmpro_active_notifications as $notification ) {
-		if ( pmpro_is_notification_applicable( $notification ) ) {
-			$pmpro_applicable_notifications[] = $notification;
-		}
-	}
-
-	// Sort by priority.
-	$pmpro_applicable_notifications = wp_list_sort( $pmpro_applicable_notifications, 'priority' );
-
-	return $pmpro_applicable_notifications;
-}
 
 /**
  * Check rules for a notification.
