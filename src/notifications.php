@@ -190,7 +190,7 @@ class Gocodebox_Banner_Notifier {
 
 		if ( empty( $notifications ) ) {
 			// Set to NULL in case the below times out or fails, this way we only check once a day.
-			set_transient( 'pmpro_notifications_' . PMPRO_VERSION, 'NULL', 86400 );
+			set_transient( "{$this->prefix}_notifications_{$this->version}", 'NULL', 86400 );
 
 			// We use the filter to hit our testing servers.
 			$notification_url = apply_filters( "{$this->prefix}_notifications_url", esc_url( $this->notifications_url ) );
@@ -587,7 +587,7 @@ class Gocodebox_Banner_Notifier {
 	 * Priority is a value from 1 to 5, or 0.
 	 * 0: No notifications at all.
 	 * 1: Security notifications.
-	 * 2: Core PMPro updates.
+	 * 2: Core plugin updates.
 	 * 3: Updates to plugins already installed.
 	 * 4: Suggestions based on existing plugins and settings.
 	 * 5: Informative.
