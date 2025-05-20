@@ -7,7 +7,8 @@
     "php": ">=7.4"
   },
   "require-dev": {
-    "lifterlms/lifterlms-cs": "dev-trunk"
+    "lifterlms/lifterlms-cs": "dev-trunk",
+    "lifterlms/lifterlms-tests": "^4.3"
   },
   "minimum-stability": "dev",
   "archive": {
@@ -38,5 +39,15 @@
     "allow-plugins": {
       "dealerdirect/phpcodesniffer-composer-installer": true
     }
+  },
+  "scripts": {
+    "config-cs": [
+      "\"vendor/bin/phpcs\" --config-set default_standard 'LifterLMS Core'"
+    ],
+    "post-install-cmd": "@config-cs",
+    "post-update-cmd": "@config-cs",
+    "post-update-install-cmd": [
+      "@config-cs"
+    ]
   }
 }
