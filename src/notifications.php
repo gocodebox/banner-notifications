@@ -4,6 +4,7 @@
  *
  * $notifier = new Gocodebox_Banner_Notifier( array(
  *     'prefix'            => 'myplugin',               // will hook wp_ajax_myplugin_notifications, etc.
+ *     'version'           => '1.0.0',                  // used for transient key separation
  *     'notifications_url' => 'https://example.com/notifications.json',
  * ) );
  */
@@ -56,6 +57,18 @@ class Gocodebox_Banner_Notifier {
 		add_action( "wp_ajax_{$this->prefix}_notifications", array( $this, 'notifications' ) );
 
 		add_action( "wp_ajax_{$this->prefix}_hide_notice", array( $this, 'hide_notice' ) );
+
+		// Add filters for standard checks.
+		add_filter( "{$this->prefix}_notification_test_plugins_active", array( $this, 'notification_test_plugins_active' ), 10, 1 );
+		add_filter( "{$this->prefix}_notification_test_check_plugin_version", array( $this, 'notification_test_check_plugin_version' ), 10, 1 );
+		add_filter( "{$this->prefix}_notification_test_pmpro_license", array( $this, 'notification_test_pmpro_license' ), 10, 1 );
+		add_filter( "{$this->prefix}_notification_test_pmpro_num_members", array( $this, 'notification_test_pmpro_num_members' ), 10, 1 );
+		add_filter( "{$this->prefix}_notification_test_pmpro_num_levels", array( $this, 'notification_test_pmpro_num_levels' ), 10, 1 );
+		add_filter( "{$this->prefix}_notification_test_pmpro_num_discount_codes", array( $this, 'notification_test_pmpro_num_discount_codes' ), 10, 1 );
+		add_filter( "{$this->prefix}_notification_test_pmpro_revenue", array( $this, 'notification_test_pmpro_revenue' ), 10, 1 );
+		add_filter( "{$this->prefix}_notification_test_pmpro_num_orders", array( $this, 'notification_test_pmpro_num_orders' ), 10, 1 );
+		add_filter( "{$this->prefix}_notification_test_pmpro_setting", array( $this, 'notification_test_pmpro_setting' ), 10, 1 );
+		add_filter( "{$this->prefix}_notification_test_site_url_match", array( $this, 'notification_test_site_url_match' ), 10, 1 );
 	}
 
 	/**
@@ -71,7 +84,7 @@ class Gocodebox_Banner_Notifier {
 				exit;
 			}
 
-			$paused = pmpro_notifications_pause();
+			$paused = $this->notifications_pause();
 			if ( $paused && empty( $_REQUEST[ "{$this->prefix}_notification" ] ) && $notification->priority !== 1 ) {
 				exit;
 			}
@@ -114,7 +127,6 @@ class Gocodebox_Banner_Notifier {
 
 		exit;
 	}
-
 
 	/**
 	 * Get the highest priority applicable notification from the list.
@@ -206,7 +218,7 @@ class Gocodebox_Banner_Notifier {
 		// Filter out notifications based on show/hide rules.
 		$applicable_notifications = array();
 		foreach ( $active_notifications as $notification ) {
-			if ( pmpro_is_notification_applicable( $notification ) ) {
+			if ( $this->is_notification_applicable( $notification ) ) {
 				$applicable_notifications[] = $notification;
 			}
 		}
@@ -216,435 +228,457 @@ class Gocodebox_Banner_Notifier {
 
 		return $applicable_notifications;
 	}
-}
 
+	/**
+	 * Check rules for a notification.
+	 *
+	 * @param object $notification The notification object.
+	 * @returns bool true if notification should be shown, false if not.
+	 */
+	function is_notification_applicable( $notification ) {
+		// If one is specified by URL parameter, it's allowed.
+		if ( ! empty( $_REQUEST[ "{$this->prefix}_notification" ] ) && $notification->id == intval( $_REQUEST[ "{$this->prefix}_notification" ] ) ) {
+			return true;
+		}
 
+		// Hide if today's date is before notification start date.
+		// TODO: Potentially switch as current_time( 'timestamp' ) is deprecated.
+		if ( date( 'Y-m-d', current_time( 'timestamp' ) ) < $notification->starts ) {
+			return false;
+		}
 
-/**
- * Check rules for a notification.
- *
- * @param object $notification The notification object.
- * @returns bool true if notification should be shown, false if not.
- */
-function pmpro_is_notification_applicable( $notification ) {
-	// If one is specified by URL parameter, it's allowed.
-	if ( ! empty( $_REQUEST['pmpro_notification'] ) && $notification->id == intval( $_REQUEST['pmpro_notification'] ) ) {
+		// Hide if today's date is after end date.
+		// TODO: Potentially as current_time( 'timestamp' ) is deprecated.
+		if ( date( 'Y-m-d', current_time( 'timestamp' ) ) > $notification->ends ) {
+			return false;
+		}
+
+		// Check priority, e.g. if only security notifications should be shown.
+		if ( $notification->priority > $this->get_max_notification_priority() ) {
+			return false;
+		}
+
+		// Check show rules.
+		if ( ! $this->should_show_notification( $notification ) ) {
+			return false;
+		}
+
+		// Check hide rules.
+		if ( $this->should_hide_notification( $notification ) ) {
+			return false;
+		}
+
+		// If we get here, show it.
 		return true;
 	}
 
-	// Hide if today's date is before notification start date.
-	// TODO: Switch as current_time( 'timestamp' ) is deprecated.
-	if ( date( 'Y-m-d', current_time( 'timestamp' ) ) < $notification->starts ) {
-		return false;
-	}
+	/**
+	 * Check a notification to see if we should show it
+	 * based on the rules set.
+	 * Shows if ALL rules are true. (AND)
+	 *
+	 * @param object $notification The notification object.
+	 */
+	function should_show_notification( $notification ) {
+		// default to showing.
+		$show = true;
 
-	// Hide if today's date is after end date.
-	// TODO: Switch as current_time( 'timestamp' ) is deprecated.
-	if ( date( 'Y-m-d', current_time( 'timestamp' ) ) > $notification->ends ) {
-		return false;
-	}
-
-	// Check priority, e.g. if only security notifications should be shown.
-	if ( $notification->priority > pmpro_get_max_notification_priority() ) {
-		return false;
-	}
-
-	// Check show rules.
-	if ( ! pmpro_should_show_notification( $notification ) ) {
-		return false;
-	}
-
-	// Check hide rules.
-	if ( pmpro_should_hide_notification( $notification ) ) {
-		return false;
-	}
-
-	// If we get here, show it.
-	return true;
-}
-
-/**
- * Check a notification to see if we should show it
- * based on the rules set.
- * Shows if ALL rules are true. (AND)
- *
- * @param object $notification The notification object.
- */
-function pmpro_should_show_notification( $notification ) {
-	// default to showing
-	$show = true;
-
-	if ( ! empty( $notification->show_if ) ) {
-		foreach ( $notification->show_if as $test => $data ) {
-			$test_function = 'pmpro_notification_test_' . $test;
-			if ( function_exists( $test_function ) ) {
-				$show = call_user_func( $test_function, $data );
+		if ( ! empty( $notification->show_if ) ) {
+			foreach ( $notification->show_if as $test => $data ) {
+				$test_filter = $this->prefix . '_notification_test_' . $test;
+					$show    = apply_filters( $test_filter, false, $data );
 				if ( ! $show ) {
 					// one test failed, let's not show
 					break;
 				}
-			} else {
-				$show = false;
 			}
 		}
+
+		return $show;
 	}
 
-	return $show;
-}
+	/**
+	 * Check a notification to see if we should hide it
+	 * based on the rules set.
+	 * Hides if ANY rule is true. (OR)
+	 *
+	 * @param object $notification The notification object.
+	 */
+	function should_hide_notification( $notification ) {
+		// default to NOT hiding.
+		$hide = false;
 
-/**
- * Check a notification to see if we should hide it
- * based on the rules set.
- * Hides if ANY rule is true. (OR)
- *
- * @param object $notification The notification object.
- */
-function pmpro_should_hide_notification( $notification ) {
-	// default to NOT hiding
-	$hide = false;
-
-	if ( ! empty( $notification->hide_if ) ) {
-		foreach ( $notification->hide_if as $test => $data ) {
-			$test_function = 'pmpro_notification_test_' . $test;
-			if ( function_exists( $test_function ) ) {
-				$hide = call_user_func( $test_function, $data );
+		if ( ! empty( $notification->hide_if ) ) {
+			foreach ( $notification->hide_if as $test => $data ) {
+				$test_filter = $this->prefix . 'notification_test_' . $test;
+				$hide        = apply_filters( $test_filter, false, $data );
 				if ( $hide ) {
 					// one test passes, let's hide
 					break;
 				}
 			}
 		}
+
+		return $hide;
 	}
 
-	return $hide;
-}
+	/**
+	 * Plugins active test.
+	 *
+	 * @param array $plugins An array of plugin paths and filenames to check.
+	 * @returns bool true if ALL of the plugins are active (AND), false otherwise.
+	 */
+	function notification_test_plugins_active( $plugins ) {
+		if ( ! is_array( $plugins ) ) {
+			$plugins = array( $plugins );
+		}
 
-/**
- * Plugins active test.
- *
- * @param array $plugins An array of plugin paths and filenames to check.
- * @returns bool true if ALL of the plugins are active (AND), false otherwise.
- */
-function pmpro_notification_test_plugins_active( $plugins ) {
-	if ( ! is_array( $plugins ) ) {
-		$plugins = array( $plugins );
+		foreach ( $plugins as $plugin ) {
+			if ( ! is_plugin_active( $plugin ) ) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
-	foreach ( $plugins as $plugin ) {
-		if ( ! pmpro_is_plugin_active( $plugin ) ) {
+	/**
+	 * Plugin version test.
+	 *
+	 * @param array $data Array from notification with plugin_file, comparison, and version to check.
+	 * @returns bool true if plugin is active and version comparison is true, false otherwise.
+	 */
+	function notification_test_check_plugin_version( $data ) {
+		if ( ! is_array( $data ) ) {
+			return false;
+		}
+
+		if ( ! isset( $data[0] ) || ! isset( $data[1] ) || ! isset( $data[2] ) ) {
+			return false;
+		}
+
+		// TODO: Use get_plugin_data()?
+		$plugin_file = $data[0];
+		$comparison  = $data[1];
+		$version     = $data[2];
+
+		// Make sure data to check is in a good format.
+		if ( empty( $plugin_file ) || empty( $comparison ) || ! isset( $version ) ) {
+			return false;
+		}
+
+		// Get plugin data.
+		$full_plugin_file_path = WP_PLUGIN_DIR . '/' . $plugin_file;
+		if ( is_file( $full_plugin_file_path ) ) {
+			$plugin_data = get_plugin_data( $full_plugin_file_path, false, true );
+		}
+
+		// Return false if there is no plugin data.
+		if ( empty( $plugin_data ) || empty( $plugin_data['Version'] ) ) {
+			return false;
+		}
+
+		// Check version.
+		if ( version_compare( $plugin_data['Version'], $version, $comparison ) ) {
+			return true;
+		} else {
 			return false;
 		}
 	}
 
-	return true;
-}
+	/**
+	 * PMPro license type test.
+	 *
+	 * @param string $license PMPro license type to check for.
+	 * @returns bool true if the PMPro license type matches.
+	 */
+	function notification_test_pmpro_license( $license_type ) {
+		if ( ! function_exists( 'pmpro_license_isValid' ) ) {
+			return false;
+		}
 
-/**
- * Plugin version test.
- *
- * @param array $data Array from notification with plugin_file, comparison, and version to check.
- * @returns bool true if plugin is active and version comparison is true, false otherwise.
- */
-function pmpro_notification_test_check_plugin_version( $data ) {
-	if ( ! is_array( $data ) ) {
-		return false;
+		if ( empty( $license_type ) ) {
+			// If no license type, check they DON'T have a valid license key
+			$valid = ! pmpro_license_isValid();
+		} else {
+			// Check if they have a valid key of the type specified
+			$valid = pmpro_license_isValid( null, $license_type );
+		}
+
+		return $valid;
 	}
 
-	if ( ! isset( $data[0] ) || ! isset( $data[1] ) || ! isset( $data[2] ) ) {
-		return false;
+	/**
+	 * PMPro number of members test.
+	 *
+	 * @param array $data Array from the notification with [0] comparison operator and [1] number of members.
+	 * @returns bool true if there are as many members as specified.
+	 */
+	function notification_test_pmpro_num_members( $data ) {
+		global $wpdb;
+		static $num_members;
+
+		if ( ! function_exists( 'pmpro_int_compare' ) ) {
+			return false;
+		}
+
+		if ( ! is_array( $data ) || ! isset( $data[0] ) || ! isset( $data[1] ) ) {
+			return false;
+		}
+
+		if ( ! isset( $num_members ) ) {
+			$sqlQuery    = "SELECT COUNT(*) FROM ( SELECT user_id FROM $wpdb->pmpro_memberships_users WHERE status = 'active' GROUP BY user_id ) t1";
+			$num_members = $wpdb->get_var( $sqlQuery );
+		}
+
+		return pmpro_int_compare( $num_members, $data[1], $data[0] );
 	}
 
-	return pmpro_check_plugin_version( $data[0], $data[1], $data[2] );
-}
+	/**
+	 * PMPro number of levels test.
+	 *
+	 * @param array $data Array from the notification with [0] comparison operator and [1] number of levels.
+	 * @returns bool true if there are as many levels as specified.
+	 */
+	function notification_test_pmpro_num_levels( $data ) {
+		global $wpdb;
+		static $num_levels;
 
-/**
- * PMPro license type test.
- *
- * @param string $license PMPro license type to check for.
- * @returns bool true if the PMPro license type matches.
- */
-function pmpro_notification_test_pmpro_license( $license_type ) {
-	if ( empty( $license_type ) ) {
-		// If no license type, check they DON'T have a valid license key
-		$valid = ! pmpro_license_isValid();
-	} else {
-		// Check if they have a valid key of the type specified
-		$valid = pmpro_license_isValid( null, $license_type );
+		if ( ! function_exists( 'pmpro_int_compare' ) ) {
+			return false;
+		}
+
+		if ( ! is_array( $data ) || ! isset( $data[0] ) || ! isset( $data[1] ) ) {
+			return false;
+		}
+
+		if ( ! isset( $num_levels ) ) {
+			$sqlQuery   = "SELECT COUNT(*) FROM $wpdb->pmpro_membership_levels";
+			$num_levels = $wpdb->get_var( $sqlQuery );
+		}
+
+		return pmpro_int_compare( $num_levels, $data[1], $data[0] );
 	}
 
-	return $valid;
-}
+	/**
+	 * PMPro number of discount codes test.
+	 *
+	 * @param array $data Array from the notification with [0] comparison operator and [1] number of discount codes.
+	 * @returns bool true if there are as many discount codes as specified.
+	 */
+	function notification_test_pmpro_num_discount_codes( $data ) {
+		global $wpdb;
+		static $num_codes;
 
-/**
- * PMPro number of members test.
- *
- * @param array $data Array from the notification with [0] comparison operator and [1] number of members.
- * @returns bool true if there are as many members as specified.
- */
-function pmpro_notification_test_pmpro_num_members( $data ) {
-	global $wpdb;
-	static $num_members;
+		if ( ! function_exists( 'pmpro_int_compare' ) ) {
+			return false;
+		}
 
-	if ( ! is_array( $data ) || ! isset( $data[0] ) || ! isset( $data[1] ) ) {
-		return false;
+		if ( ! is_array( $data ) || ! isset( $data[0] ) || ! isset( $data[1] ) ) {
+			return false;
+		}
+
+		if ( ! isset( $num_codes ) ) {
+			$sqlQuery  = "SELECT COUNT(*) FROM $wpdb->pmpro_discount_codes";
+			$num_codes = $wpdb->get_var( $sqlQuery );
+		}
+
+		return pmpro_int_compare( $num_codes, $data[1], $data[0] );
 	}
 
-	if ( ! isset( $num_members ) ) {
-		$sqlQuery    = "SELECT COUNT(*) FROM ( SELECT user_id FROM $wpdb->pmpro_memberships_users WHERE status = 'active' GROUP BY user_id ) t1";
-		$num_members = $wpdb->get_var( $sqlQuery );
+	/**
+	 * PMPro revenue test.
+	 *
+	 * @param array $data Array from the notification with [0] comparison operator and [1] revenue.
+	 * Optionally $data can contain a third parameter to also check the currency code.
+	 * @returns bool true if there is as much revenue as specified.
+	 */
+	function notification_test_pmpro_revenue( $data ) {
+		global $wpdb;
+		static $revenue;
+
+		if ( ! function_exists( 'pmpro_int_compare' ) ) {
+			return false;
+		}
+
+		if ( ! is_array( $data ) || ! isset( $data[0] ) || ! isset( $data[1] ) ) {
+			return false;
+		}
+
+		if ( ! isset( $revenue ) ) {
+			$sqlQuery = "SELECT SUM(total) FROM $wpdb->pmpro_membership_orders WHERE gateway_environment = 'live' AND status NOT IN('refunded', 'review', 'token', 'error')";
+			$revenue  = $wpdb->get_var( $sqlQuery );
+		}
+
+		return pmpro_int_compare( $revenue, $data[1], $data[0] );
 	}
 
-	return pmpro_int_compare( $num_members, $data[1], $data[0] );
-}
+	/**
+	 * PMPro number of orders test.
+	 *
+	 * @param array $data Array from the notification with [0] comparison operator and [1] number of orders.
+	 * @returns bool true if there are as many orders as specified.
+	 */
+	function notification_test_pmpro_num_orders( $data ) {
+		global $wpdb;
+		static $num_orders;
 
-/**
- * PMPro number of levels test.
- *
- * @param array $data Array from the notification with [0] comparison operator and [1] number of levels.
- * @returns bool true if there are as many levels as specified.
- */
-function pmpro_notification_test_pmpro_num_levels( $data ) {
-	global $wpdb;
-	static $num_levels;
+		if ( ! function_exists( 'pmpro_int_compare' ) ) {
+			return false;
+		}
 
-	if ( ! is_array( $data ) || ! isset( $data[0] ) || ! isset( $data[1] ) ) {
-		return false;
+		if ( ! is_array( $data ) || ! isset( $data[0] ) || ! isset( $data[1] ) ) {
+			return false;
+		}
+
+		if ( ! isset( $num_orders ) ) {
+			$sqlQuery   = "SELECT COUNT(*) FROM $wpdb->pmpro_membership_orders WHERE gateway_environment = 'live' AND status NOT IN('refunded', 'review', 'token', 'error')";
+			$num_orders = $wpdb->get_var( $sqlQuery );
+		}
+
+		return pmpro_int_compare( $num_orders, $data[1], $data[0] );
 	}
 
-	if ( ! isset( $num_levels ) ) {
-		$sqlQuery   = "SELECT COUNT(*) FROM $wpdb->pmpro_membership_levels";
-		$num_levels = $wpdb->get_var( $sqlQuery );
+	/**
+	 * PMPro setting test.
+	 *
+	 * @param array $data Array from the notification with [0] setting name to check [1] value to check for.
+	 * @returns bool true if an option if found with the specified name and value.
+	 */
+	function notification_test_pmpro_setting( $data ) {
+		if ( ! is_array( $data ) || ! isset( $data[0] ) || ! isset( $data[1] ) ) {
+			return false;
+		}
+
+		// remove the pmpro_ prefix if given
+		if ( strpos( $data[0], 'pmpro_' ) === 0 ) {
+			$data[0] = substr( $data[0], 6, strlen( $data[0] ) - 6 );
+		}
+
+		$option_value = get_option( 'pmpro_' . $data[0] );
+		if ( isset( $option_value ) && $option_value == $data[1] ) {
+			return true;
+		} else {
+			return false;
+		}
 	}
 
-	return pmpro_int_compare( $num_levels, $data[1], $data[0] );
-}
-
-/**
- * PMPro number of discount codes test.
- *
- * @param array $data Array from the notification with [0] comparison operator and [1] number of discount codes.
- * @returns bool true if there are as many discount codes as specified.
- */
-function pmpro_notification_test_pmpro_num_discount_codes( $data ) {
-	global $wpdb;
-	static $num_codes;
-
-	if ( ! is_array( $data ) || ! isset( $data[0] ) || ! isset( $data[1] ) ) {
-		return false;
-	}
-
-	if ( ! isset( $num_codes ) ) {
-		$sqlQuery  = "SELECT COUNT(*) FROM $wpdb->pmpro_discount_codes";
-		$num_codes = $wpdb->get_var( $sqlQuery );
-	}
-
-	return pmpro_int_compare( $num_codes, $data[1], $data[0] );
-}
-
-/**
- * PMPro number of orders test.
- *
- * @param array $data Array from the notification with [0] comparison operator and [1] number of orders.
- * @returns bool true if there are as many orders as specified.
- */
-function pmpro_notification_test_pmpro_num_orders( $data ) {
-	global $wpdb;
-	static $num_orders;
-
-	if ( ! is_array( $data ) || ! isset( $data[0] ) || ! isset( $data[1] ) ) {
-		return false;
-	}
-
-	if ( ! isset( $num_orders ) ) {
-		$sqlQuery   = "SELECT COUNT(*) FROM $wpdb->pmpro_membership_orders WHERE gateway_environment = 'live' AND status NOT IN('refunded', 'review', 'token', 'error')";
-		$num_orders = $wpdb->get_var( $sqlQuery );
-	}
-
-	return pmpro_int_compare( $num_orders, $data[1], $data[0] );
-}
-
-/**
- * PMPro revenue test.
- *
- * @param array $data Array from the notification with [0] comparison operator and [1] revenue.
- * Optionally $data can contain a third parameter to also check the currency code.
- * @returns bool true if there is as much revenue as specified.
- */
-function pmpro_notification_test_pmpro_revenue( $data ) {
-	global $wpdb;
-	static $revenue;
-
-	if ( ! is_array( $data ) || ! isset( $data[0] ) || ! isset( $data[1] ) ) {
-		return false;
-	}
-
-	if ( ! isset( $revenue ) ) {
-		$sqlQuery = "SELECT SUM(total) FROM $wpdb->pmpro_membership_orders WHERE gateway_environment = 'live' AND status NOT IN('refunded', 'review', 'token', 'error')";
-		$revenue  = $wpdb->get_var( $sqlQuery );
-	}
-
-	return pmpro_int_compare( $revenue, $data[1], $data[0] );
-}
-
-/**
- * PMPro setting test.
- *
- * @param array $data Array from the notification with [0] setting name to check [1] value to check for.
- * @returns bool true if an option if found with the specified name and value.
- */
-function pmpro_notification_test_pmpro_setting( $data ) {
-	if ( ! is_array( $data ) || ! isset( $data[0] ) || ! isset( $data[1] ) ) {
-		return false;
-	}
-
-	// remove the pmpro_ prefix if given
-	if ( strpos( $data[0], 'pmpro_' ) === 0 ) {
-		$data[0] = substr( $data[0], 6, strlen( $data[0] ) - 6 );
-	}
-
-	$option_value = get_option( 'pmpro_' . $data[0] );
-	if ( isset( $option_value ) && $option_value == $data[1] ) {
-		return true;
-	} else {
-		return false;
-	}
-}
-
-/**
- * PMPro site URL test.
- *
- * @param string $string String or array of strings to look for in the site URL
- * @returns bool true if the string shows up in the site URL
- */
-function pmpro_notification_test_site_url_match( $string ) {
-	if ( ! empty( $string ) ) {
-		$strings_to_check = (array) $string;
-		foreach ( $strings_to_check as $check ) {
-			if ( strpos( get_bloginfo( 'url' ), $check ) !== false ) {
-				return true;
+	/**
+	 * Site URL test.
+	 *
+	 * @param string $string String or array of strings to look for in the site URL
+	 * @returns bool true if the string shows up in the site URL
+	 */
+	function notification_test_site_url_match( $string ) {
+		if ( ! empty( $string ) ) {
+			$strings_to_check = (array) $string;
+			foreach ( $strings_to_check as $check ) {
+				if ( strpos( get_bloginfo( 'url' ), $check ) !== false ) {
+					return true;
+				}
 			}
 		}
+
+		return false;
 	}
-	return false;
-}
 
-/**
- * Get the max notification priority allowed on this site.
- * Priority is a value from 1 to 5, or 0.
- * 0: No notifications at all.
- * 1: Security notifications.
- * 2: Core PMPro updates.
- * 3: Updates to plugins already installed.
- * 4: Suggestions based on existing plugins and settings.
- * 5: Informative.
- */
-function pmpro_get_max_notification_priority() {
-	static $max_priority = null;
+	/**
+	 * Get the max notification priority allowed on this site.
+	 * Priority is a value from 1 to 5, or 0.
+	 * 0: No notifications at all.
+	 * 1: Security notifications.
+	 * 2: Core PMPro updates.
+	 * 3: Updates to plugins already installed.
+	 * 4: Suggestions based on existing plugins and settings.
+	 * 5: Informative.
+	 */
+	function get_max_notification_priority() {
+		static $max_priority = null;
 
-	if ( ! isset( $max_priority ) ) {
-		$max_priority = get_option( 'pmpro_maxnotificationpriority' );
+		if ( ! isset( $max_priority ) ) {
+			$max_priority = get_option( "{$this->prefix}_maxnotificationpriority" );
 
-		// default to 5
-		if ( empty( $max_priority ) ) {
-			$max_priority = 5;
+			if ( empty( $max_priority ) ) {
+				$max_priority = 5;
+			}
+
+			// filter allows for max priority 0 to turn them off entirely.
+			$max_priority = apply_filters( "{$this->prefix}_max_notification_priority", $max_priority );
 		}
 
-		// filter allows for max priority 0 to turn them off entirely
-		$max_priority = apply_filters( 'pmpro_max_notification_priority', $max_priority );
+		return $max_priority;
 	}
 
-	return $max_priority;
-}
 
-/**
- * Have we shown too many notifications recently.
- * By default we limit to 1 notification per 12 hour period
- * and 3 notifications per week.
- */
-function pmpro_notifications_pause() {
-	global $current_user;
+	/**
+	 * Have we shown too many notifications recently.
+	 * By default we limit to 1 notification per 12 hour period
+	 * and 3 notifications per week.
+	 */
+	function notifications_pause() {
+		global $current_user;
 
-	// No user? Pause.
-	if ( empty( $current_user ) ) {
-		return true;
-	}
+		// No user? Pause.
+		if ( empty( $current_user ) ) {
+			return true;
+		}
 
-	$archived_notifications = get_user_meta( $current_user->ID, 'pmpro_archived_notifications', true );
-	if ( ! is_array( $archived_notifications ) ) {
-		// If the user has not yet archived a notiification, assume that this is a new PMPro install or that they are a new admin.
-		// Either way, we want to delay their first notification.
-		// We can do this by creating a "delay" archived notification with an archive day 7 days in the future.
-		update_user_meta( $current_user->ID, 'pmpro_archived_notifications', array( 'initial_notification_delay' => date_i18n( 'c', strtotime( '+7 days' ) ) ) );
-		return true;
-	}
-	$archived_notifications = array_values( $archived_notifications );
-	$num                    = count( $archived_notifications );
-	// TODO: Switch as current_time( 'timestamp' ) is deprecated.
-	$now = current_time( 'timestamp' );
+		$archived_notifications = get_user_meta( $current_user->ID, "{$this->prefix}_archived_notifications", true );
+		if ( ! is_array( $archived_notifications ) ) {
+			// If the user has not yet archived a notification, assume that this is a new install or that they are a new admin.
+			// Either way, we want to delay their first notification.
+			// We can do this by creating a "delay" archived notification with an archive day 7 days in the future.
+			update_user_meta( $current_user->ID, "{$this->prefix}_archived_notifications", array( 'initial_notification_delay' => date_i18n( 'c', strtotime( '+7 days' ) ) ) );
+			return true;
+		}
+		$archived_notifications = array_values( $archived_notifications );
+		$num                    = count( $archived_notifications );
+		// TODO: Switch as current_time( 'timestamp' ) is deprecated.
+		$now = current_time( 'timestamp' );
 
-	// No archived (dismissed) notifications? Don't pause.
-	if ( empty( $archived_notifications ) ) {
+		// No archived (dismissed) notifications? Don't pause.
+		if ( empty( $archived_notifications ) ) {
+			return false;
+		}
+
+		// Last notification was dismissed < 12 hours ago. Pause.
+		$last_notification_date = $archived_notifications[ $num - 1 ];
+		if ( strtotime( $last_notification_date, $now ) > ( $now - 3600 * 12 ) ) {
+			return true;
+		}
+
+		// If we have < 3 archived notifications. Don't pause.
+		if ( $num < 3 ) {
+			return false;
+		}
+
+		// If we've shown 3 this week already. Pause.
+		$third_last_notification_date = $archived_notifications[ $num - 3 ];
+		if ( strtotime( $third_last_notification_date, $now ) > ( $now - 3600 * 24 * 7 ) ) {
+			return true;
+		}
+
+		// If we've gotten here, don't pause.
 		return false;
 	}
 
-	// Last notification was dismissed < 12 hours ago. Pause.
-	$last_notification_date = $archived_notifications[ $num - 1 ];
-	if ( strtotime( $last_notification_date, $now ) > ( $now - 3600 * 12 ) ) {
-		return true;
-	}
 
-	// If we have < 3 archived notifications. Don't pause.
-	if ( $num < 3 ) {
-		return false;
-	}
+	/**
+	 * Move the top notice to the archives if dismissed.
+	 */
+	function hide_notice() {
+		global $current_user;
+		$notification_id = sanitize_text_field( $_POST['notification_id'] );
 
-	// If we've shown 3 this week already. Pause.
-	$third_last_notification_date = $archived_notifications[ $num - 3 ];
-	if ( strtotime( $third_last_notification_date, $now ) > ( $now - 3600 * 24 * 7 ) ) {
-		return true;
-	}
+		$archived_notifications = get_user_meta( $current_user->ID, "{$this->prefix}_archived_notifications", true );
 
-	// If we've gotten here, don't pause.
-	return false;
-}
+		if ( ! is_array( $archived_notifications ) ) {
+			$archived_notifications = array();
+		}
 
-/**
- * Move the top notice to the archives if dismissed.
- */
-function pmpro_hide_notice() {
-	global $current_user;
-	$notification_id = sanitize_text_field( $_POST['notification_id'] );
+		$archived_notifications[ $notification_id ] = date_i18n( 'c' );
 
-	$archived_notifications = get_user_meta( $current_user->ID, 'pmpro_archived_notifications', true );
-
-	if ( ! is_array( $archived_notifications ) ) {
-		$archived_notifications = array();
-	}
-
-	$archived_notifications[ $notification_id ] = date_i18n( 'c' );
-
-	update_user_meta( $current_user->ID, 'pmpro_archived_notifications', $archived_notifications );
-	exit;
-}
-add_action( 'wp_ajax_pmpro_hide_notice', 'pmpro_hide_notice' );
-
-
-
-
-/**
- * Show Powered by Paid Memberships Pro comment (only visible in source) in the footer.
- */
-function pmpro_link() {
-	?>
-	Memberships powered by Paid Memberships Pro v<?php echo esc_html( PMPRO_VERSION ); ?>.
-	<?php
-}
-
-function pmpro_footer_link() {
-	if ( ! get_option( 'pmpro_hide_footer_link' ) ) {
-		?>
-		<!-- <?php pmpro_link(); ?> -->
-		<?php
+		update_user_meta( $current_user->ID, "{$this->prefix}_archived_notifications", $archived_notifications );
+		exit;
 	}
 }
-add_action( 'wp_footer', 'pmpro_footer_link' );
