@@ -1,7 +1,7 @@
 {
   "name": "gocodebox/banner-notifications",
   "description": "Library for showing admin-area banner notices.",
-  "type": "library",
+  "type": "wordpress-plugin",
   "license": "GPL-2.0-or-later",
   "require": {
     "php": ">=7.4"
