@@ -78,18 +78,23 @@ class Gocodebox_Banner_Notifier {
 	 * Note we exit instead of returning because this is loaded via AJAX.
 	 */
 	function notifications() {
-		if ( current_user_can( 'manage_options' ) ) {
-			$notification = $this->get_next_notification();
-			if ( empty( $notification ) ) {
-				exit;
-			}
+		if ( ! current_user_can( 'manage_options' ) ) {
+			exit;
+		}
 
-			$paused = $this->notifications_pause();
-			if ( $paused && empty( $_REQUEST[ "{$this->prefix}_notification" ] ) && $notification->priority !== 1 ) {
-				exit;
-			}
+		$notification = $this->get_next_notification();
 
-			?>
+		if ( empty( $notification ) ) {
+			exit;
+		}
+
+		$paused = $this->notifications_pause();
+
+		if ( $paused && empty( $_REQUEST[ "{$this->prefix}_notification" ] ) && $notification->priority !== 1 ) {
+			exit;
+		}
+
+		?>
 			<div class="<?php echo esc_attr( $this->prefix ); ?>_notification <?php echo esc_attr( $this->prefix ); ?>_notification-<?php echo esc_attr( $notification->type ); ?>" id="<?php echo esc_attr( $notification->id ); ?>">
 				<?php if ( $notification->dismissable ) { ?>
 				<button type="button" class="<?php echo esc_html( $this->prefix ); ?>-notice-button notice-dismiss" value="<?php echo esc_attr( $notification->id ); ?>"><span class="screen-reader-text"><?php esc_html_e( 'Dismiss this notice.', 'gocodebox-banner-notifications' ); ?></span></button>
@@ -123,9 +128,8 @@ class Gocodebox_Banner_Notifier {
 			</div> <!-- end <?php echo esc_html( $this->prefix ); ?>_notification-content -->
 			</div> <!-- end <?php echo esc_html( $this->prefix ); ?>_notification -->
 			<?php
-		}
 
-		exit;
+			exit;
 	}
 
 	/**
