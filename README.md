@@ -59,7 +59,7 @@ TBW
 - Loading an instance of the class with unique slug (ie. for the )
 
 ```
-$GLOBAL['pmpro-banner-notifications'] = new Gocodebox_Banner_Notifier( array( 
+$GLOBALS['pmpro_banner_notifications'] = new Gocodebox_Banner_Notifier( array( 
     'prefix' => 'pmpro',
     'version' => PMPRO_VERSION, 
     'notifications_url' => 'https://notifications.paidmembershipspro.com/v2/notifications.json'
