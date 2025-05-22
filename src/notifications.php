@@ -59,16 +59,16 @@ class Gocodebox_Banner_Notifier {
 		add_action( "wp_ajax_{$this->prefix}_hide_notice", array( $this, 'hide_notice' ) );
 
 		// Add filters for standard checks.
-		add_filter( "{$this->prefix}_notification_test_plugins_active", array( $this, 'notification_test_plugins_active' ), 10, 1 );
-		add_filter( "{$this->prefix}_notification_test_check_plugin_version", array( $this, 'notification_test_check_plugin_version' ), 10, 1 );
-		add_filter( "{$this->prefix}_notification_test_pmpro_license", array( $this, 'notification_test_pmpro_license' ), 10, 1 );
-		add_filter( "{$this->prefix}_notification_test_pmpro_num_members", array( $this, 'notification_test_pmpro_num_members' ), 10, 1 );
-		add_filter( "{$this->prefix}_notification_test_pmpro_num_levels", array( $this, 'notification_test_pmpro_num_levels' ), 10, 1 );
-		add_filter( "{$this->prefix}_notification_test_pmpro_num_discount_codes", array( $this, 'notification_test_pmpro_num_discount_codes' ), 10, 1 );
-		add_filter( "{$this->prefix}_notification_test_pmpro_revenue", array( $this, 'notification_test_pmpro_revenue' ), 10, 1 );
-		add_filter( "{$this->prefix}_notification_test_pmpro_num_orders", array( $this, 'notification_test_pmpro_num_orders' ), 10, 1 );
-		add_filter( "{$this->prefix}_notification_test_pmpro_setting", array( $this, 'notification_test_pmpro_setting' ), 10, 1 );
-		add_filter( "{$this->prefix}_notification_test_site_url_match", array( $this, 'notification_test_site_url_match' ), 10, 1 );
+		add_filter( "{$this->prefix}_notification_test_plugins_active", array( $this, 'notification_test_plugins_active' ), 10, 2 );
+		add_filter( "{$this->prefix}_notification_test_check_plugin_version", array( $this, 'notification_test_check_plugin_version' ), 10, 2 );
+		add_filter( "{$this->prefix}_notification_test_pmpro_license", array( $this, 'notification_test_pmpro_license' ), 10, 2 );
+		add_filter( "{$this->prefix}_notification_test_pmpro_num_members", array( $this, 'notification_test_pmpro_num_members' ), 10, 2 );
+		add_filter( "{$this->prefix}_notification_test_pmpro_num_levels", array( $this, 'notification_test_pmpro_num_levels' ), 10, 2 );
+		add_filter( "{$this->prefix}_notification_test_pmpro_num_discount_codes", array( $this, 'notification_test_pmpro_num_discount_codes' ), 10, 2 );
+		add_filter( "{$this->prefix}_notification_test_pmpro_revenue", array( $this, 'notification_test_pmpro_revenue' ), 10, 2 );
+		add_filter( "{$this->prefix}_notification_test_pmpro_num_orders", array( $this, 'notification_test_pmpro_num_orders' ), 10, 2 );
+		add_filter( "{$this->prefix}_notification_test_pmpro_setting", array( $this, 'notification_test_pmpro_setting' ), 10, 2 );
+		add_filter( "{$this->prefix}_notification_test_site_url_match", array( $this, 'notification_test_site_url_match' ), 10, 2 );
 	}
 
 	/**
@@ -329,10 +329,11 @@ class Gocodebox_Banner_Notifier {
 	/**
 	 * Plugins active test.
 	 *
+	 * @param bool  $value The current test value.
 	 * @param array $plugins An array of plugin paths and filenames to check.
 	 * @returns bool true if ALL of the plugins are active (AND), false otherwise.
 	 */
-	function notification_test_plugins_active( $plugins ) {
+	function notification_test_plugins_active( $value, $plugins ) {
 		if ( ! is_array( $plugins ) ) {
 			$plugins = array( $plugins );
 		}
@@ -349,10 +350,11 @@ class Gocodebox_Banner_Notifier {
 	/**
 	 * Plugin version test.
 	 *
+	 * @param bool  $value The current test value.
 	 * @param array $data Array from notification with plugin_file, comparison, and version to check.
 	 * @returns bool true if plugin is active and version comparison is true, false otherwise.
 	 */
-	function notification_test_check_plugin_version( $data ) {
+	function notification_test_check_plugin_version( $value, $data ) {
 		if ( ! is_array( $data ) ) {
 			return false;
 		}
@@ -393,10 +395,11 @@ class Gocodebox_Banner_Notifier {
 	/**
 	 * PMPro license type test.
 	 *
+	 * @param bool   $value The current test value.
 	 * @param string $license PMPro license type to check for.
 	 * @returns bool true if the PMPro license type matches.
 	 */
-	function notification_test_pmpro_license( $license_type ) {
+	function notification_test_pmpro_license( $value, $license_type ) {
 		if ( ! function_exists( 'pmpro_license_isValid' ) ) {
 			return false;
 		}
@@ -415,10 +418,11 @@ class Gocodebox_Banner_Notifier {
 	/**
 	 * PMPro number of members test.
 	 *
+	 * @param bool  $value The current test value.
 	 * @param array $data Array from the notification with [0] comparison operator and [1] number of members.
 	 * @returns bool true if there are as many members as specified.
 	 */
-	function notification_test_pmpro_num_members( $data ) {
+	function notification_test_pmpro_num_members( $value, $data ) {
 		global $wpdb;
 		static $num_members;
 
@@ -441,10 +445,11 @@ class Gocodebox_Banner_Notifier {
 	/**
 	 * PMPro number of levels test.
 	 *
+	 * @param bool  $value The current test value.
 	 * @param array $data Array from the notification with [0] comparison operator and [1] number of levels.
 	 * @returns bool true if there are as many levels as specified.
 	 */
-	function notification_test_pmpro_num_levels( $data ) {
+	function notification_test_pmpro_num_levels( $value, $data ) {
 		global $wpdb;
 		static $num_levels;
 
@@ -467,10 +472,11 @@ class Gocodebox_Banner_Notifier {
 	/**
 	 * PMPro number of discount codes test.
 	 *
+	 * @param bool  $value The current test value.
 	 * @param array $data Array from the notification with [0] comparison operator and [1] number of discount codes.
 	 * @returns bool true if there are as many discount codes as specified.
 	 */
-	function notification_test_pmpro_num_discount_codes( $data ) {
+	function notification_test_pmpro_num_discount_codes( $value, $data ) {
 		global $wpdb;
 		static $num_codes;
 
@@ -493,11 +499,12 @@ class Gocodebox_Banner_Notifier {
 	/**
 	 * PMPro revenue test.
 	 *
+	 * @param bool  $value The current test value.
 	 * @param array $data Array from the notification with [0] comparison operator and [1] revenue.
 	 * Optionally $data can contain a third parameter to also check the currency code.
 	 * @returns bool true if there is as much revenue as specified.
 	 */
-	function notification_test_pmpro_revenue( $data ) {
+	function notification_test_pmpro_revenue( $value, $data ) {
 		global $wpdb;
 		static $revenue;
 
@@ -520,10 +527,11 @@ class Gocodebox_Banner_Notifier {
 	/**
 	 * PMPro number of orders test.
 	 *
+	 * @param bool  $value The current test value.
 	 * @param array $data Array from the notification with [0] comparison operator and [1] number of orders.
 	 * @returns bool true if there are as many orders as specified.
 	 */
-	function notification_test_pmpro_num_orders( $data ) {
+	function notification_test_pmpro_num_orders( $value, $data ) {
 		global $wpdb;
 		static $num_orders;
 
@@ -546,10 +554,11 @@ class Gocodebox_Banner_Notifier {
 	/**
 	 * PMPro setting test.
 	 *
+	 * @param bool  $value The current test value.
 	 * @param array $data Array from the notification with [0] setting name to check [1] value to check for.
 	 * @returns bool true if an option if found with the specified name and value.
 	 */
-	function notification_test_pmpro_setting( $data ) {
+	function notification_test_pmpro_setting( $value, $data ) {
 		if ( ! is_array( $data ) || ! isset( $data[0] ) || ! isset( $data[1] ) ) {
 			return false;
 		}
@@ -570,10 +579,11 @@ class Gocodebox_Banner_Notifier {
 	/**
 	 * Site URL test.
 	 *
+	 * @param bool   $value The current test value.
 	 * @param string $string String or array of strings to look for in the site URL
 	 * @returns bool true if the string shows up in the site URL
 	 */
-	function notification_test_site_url_match( $string ) {
+	function notification_test_site_url_match( $value, $string ) {
 		if ( ! empty( $string ) ) {
 			$strings_to_check = (array) $string;
 			foreach ( $strings_to_check as $check ) {
