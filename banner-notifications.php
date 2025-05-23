@@ -8,7 +8,7 @@
  * Plugin Name: Banner Notifications
  * Plugin URI: https://github.com/gocodebox/banner-notifications
  * Description: Admin banner notifications library.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Gocodebox
  * Author URI: https://lifterlms.com/
  * Text Domain: gocodebox-banner-notifications

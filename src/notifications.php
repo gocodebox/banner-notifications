@@ -650,7 +650,7 @@ class Gocodebox_Banner_Notifier {
 	/**
 	 * Helper function to check if a value is greater than, less than, greater than or equal to, or less than or equal to another value.
 	 *
-	 * @since [version]
+	 * @since 1.0.1
 	 *
 	 * @param mixed  $option_value The option value to compare.
 	 * @param string $check_type The comparison operator.
