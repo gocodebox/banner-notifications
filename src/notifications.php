@@ -262,12 +262,10 @@ class Gocodebox_Banner_Notifier {
 			return false;
 		}
 
-		// Check show rules.
 		if ( ! $this->should_show_notification( $notification ) ) {
 			return false;
 		}
 
-		// Check hide rules.
 		if ( $this->should_hide_notification( $notification ) ) {
 			return false;
 		}
@@ -676,12 +674,20 @@ class Gocodebox_Banner_Notifier {
 		return false;
 	}
 
-
 	/**
 	 * Move the top notice to the archives if dismissed.
 	 */
 	function hide_notice() {
 		global $current_user;
+
+		if ( ! isset( $_POST['notification_id'] ) ) {
+			exit;
+		}
+
+		if ( empty( $current_user ) ) {
+			exit;
+		}
+
 		$notification_id = sanitize_text_field( $_POST['notification_id'] );
 
 		$archived_notifications = get_user_meta( $current_user->ID, "{$this->prefix}_archived_notifications", true );
