@@ -97,7 +97,7 @@ class Gocodebox_Banner_Notifier {
 		?>
 			<div class="<?php echo esc_attr( $this->prefix ); ?>_notification <?php echo esc_attr( $this->prefix ); ?>_notification-<?php echo esc_attr( $notification->type ); ?>" id="<?php echo esc_attr( $notification->id ); ?>">
 				<?php if ( ( isset( $notification->dismissable ) && $notification->dismissable ) || ( isset( $notification->dismissible ) && $notification->dismissible ) ) { ?>
-				<button type="button" class="<?php echo esc_html( $this->prefix ); ?>-notice-button notice-dismiss" value="<?php echo esc_attr( $notification->id ); ?>"><span class="screen-reader-text"><?php esc_html_e( 'Dismiss this notice.', 'gocodebox-banner-notifications' ); ?></span></button>
+					<button type="button" data-nonce="<?php echo esc_attr( wp_create_nonce( $this->prefix . '_notification_dismiss_' . $notification->id ) ); ?>" class="<?php echo esc_html( $this->prefix ); ?>-notice-button notice-dismiss" value="<?php echo esc_attr( $notification->id ); ?>"><span class="screen-reader-text"><?php esc_html_e( 'Dismiss this notice.', 'gocodebox-banner-notifications' ); ?></span></button>
 				<?php } ?>
 			<div class="<?php echo esc_attr( $this->prefix ); ?>_notification-icon"><span class="dashicons dashicons-<?php echo esc_attr( $notification->dashicon ); ?>"></span></div>
 			<div class="<?php echo esc_attr( $this->prefix ); ?>_notification-content">
@@ -680,11 +680,15 @@ class Gocodebox_Banner_Notifier {
 	function hide_notice() {
 		global $current_user;
 
-		if ( ! isset( $_POST['notification_id'] ) ) {
+		if ( empty( $current_user ) ) {
 			exit;
 		}
 
-		if ( empty( $current_user ) ) {
+		if ( ! isset( $_POST['notification_id'], $_POST['nonce'] ) ) {
+			exit;
+		}
+
+		if ( ! wp_verify_nonce( $_POST['nonce'], $this->prefix . '_notification_dismiss_' . $_POST['notification_id'] ) ) {
 			exit;
 		}
 
