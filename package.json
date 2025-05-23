@@ -17,6 +17,7 @@
     "@lifterlms/llms-e2e-test-utils": "^4.1.0"
   },
   "scripts": {
-    "dev": "llms-dev"
+    "dev": "llms-dev",
+    "build": ""
   }
 }
