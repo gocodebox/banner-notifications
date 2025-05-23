@@ -23,8 +23,6 @@
 
       "README.md",
 
-      "/src",
-
       "dist",
       "node_modules",
       "tests",
