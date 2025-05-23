@@ -180,13 +180,13 @@ class Banner_Notifications_Test_Functions extends Banner_Notifications_Unit_Test
 		update_option( 'test_option', 'test_value' );
 
 		// Test with the correct option and value
-		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_option', 'test_value' ) ) );
+		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_option', '=', 'test_value' ) ) );
 
 		// Test with the correct option but wrong value
-		$this->assertFalse( $this->notifications->notification_test_check_option( false, array( 'test_option', 'wrong_value' ) ) );
+		$this->assertFalse( $this->notifications->notification_test_check_option( false, array( 'test_option', '=', 'wrong_value' ) ) );
 
 		// Test with a non-existent option
-		$this->assertFalse( $this->notifications->notification_test_check_option( false, array( 'non_existent_option', 'test_value' ) ) );
+		$this->assertFalse( $this->notifications->notification_test_check_option( false, array( 'non_existent_option', '=', 'test_value' ) ) );
 
 		// Clean up
 		delete_option( 'test_option' );
