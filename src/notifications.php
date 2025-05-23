@@ -313,7 +313,7 @@ class Gocodebox_Banner_Notifier {
 
 		if ( ! empty( $notification->hide_if ) ) {
 			foreach ( $notification->hide_if as $test => $data ) {
-				$test_filter = $this->prefix . 'notification_test_' . $test;
+				$test_filter = $this->prefix . '_notification_test_' . $test;
 				$hide        = apply_filters( $test_filter, false, $data );
 				if ( $hide ) {
 					// one test passes, let's hide
