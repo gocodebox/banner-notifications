@@ -289,7 +289,7 @@ class Gocodebox_Banner_Notifier {
 		if ( ! empty( $notification->show_if ) ) {
 			foreach ( $notification->show_if as $test => $data ) {
 				$test_filter = $this->prefix . '_notification_test_' . $test;
-					$show    = apply_filters( $test_filter, false, $data );
+				$show        = apply_filters( $test_filter, false, $data );
 				if ( ! $show ) {
 					// one test failed, let's not show
 					break;
