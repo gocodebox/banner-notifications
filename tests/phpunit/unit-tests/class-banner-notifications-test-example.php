@@ -124,20 +124,20 @@ class Banner_Notifications_Test_Example extends Banner_Notifications_Unit_Test_C
 	 * @return void
 	 */
 	public function test_notification_both_plugins_active() {
-		// Mock that both plugins are active
+		// Mock that both plugins are active.
 		$this->mock_plugin_active( 'convertkit/wp-convertkit.php', true );
 		$this->mock_plugin_active( 'lifterlms-convertkit/lifterlms-convertkit.php', true );
 
-		// convertkit is active, so should_show_notification should return true
+		// convertkit is active, so should_show_notification should return true.
 		$this->assertTrue( $this->notifications->should_show_notification( $this->example_notification ) );
 
-		// lifterlms-convertkit is active, so should_hide_notification should return true
+		// lifterlms-convertkit is active, so should_hide_notification should return true.
 		$this->assertTrue( $this->notifications->should_hide_notification( $this->example_notification ) );
 
-		// Overall, the notification should not be applicable because hide_if takes precedence
+		// Overall, the notification should not be applicable.
 		$this->assertFalse( $this->notifications->is_notification_applicable( $this->example_notification ) );
 
-		// Clean up
+		// Clean up.
 		$this->mock_plugin_active( 'convertkit/wp-convertkit.php', false );
 		$this->mock_plugin_active( 'lifterlms-convertkit/lifterlms-convertkit.php', false );
 	}
