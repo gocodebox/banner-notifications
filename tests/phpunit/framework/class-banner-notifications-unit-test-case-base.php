@@ -23,15 +23,13 @@ class Banner_Notifications_Unit_Test_Case_Base extends LLMS_Unit_Test_Case {
 
 	public function __construct()
 	{
+		parent::__construct();
+
 		add_filter( 'pre_option_active_plugins', array( $this, 'filter_active_plugins' ), 10, 1 );
 	}
 
 	function filter_active_plugins( $active_plugins ) {
-		die('dfff');
 		global $mock_active_plugins;
-
-		var_dump('mocking...');
-		var_dump( $active_plugins );
 
 		if ( isset( $mock_active_plugins ) ) {
 			return $mock_active_plugins;
@@ -55,7 +53,7 @@ class Banner_Notifications_Unit_Test_Case_Base extends LLMS_Unit_Test_Case {
 		$mock_active_plugins = array();
 
 		// Create a random version number.
-		$this->version = '1.0.' . rand( 0, 999 );
+		$this->version = sanitize_key( '1.0.' . rand( 0, 999 ) );
 
 		// Create random prefix.
 		$this->prefix = 'test_prefix_' . rand( 0, 999 );
@@ -84,8 +82,8 @@ class Banner_Notifications_Unit_Test_Case_Base extends LLMS_Unit_Test_Case {
 			'title' => 'Test Notification',
 			'content' => '<p>This is a test notification.</p>',
 			'status' => 'publish',
-			'starts' => date( 'Y-m-d', strtotime( '-1 day' ) ),
-			'ends' => date( 'Y-m-d', strtotime( '+1 day' ) ),
+			'starts' => date( 'Y-m-d', strtotime( '-2 day' ) ),
+			'ends' => date( 'Y-m-d', strtotime( '+2 day' ) ),
 			'type' => 'info',
 			'dashicon' => 'info',
 			'priority' => 4,
@@ -112,7 +110,7 @@ class Banner_Notifications_Unit_Test_Case_Base extends LLMS_Unit_Test_Case {
 			);
 		}
 
-		set_transient( "{$this->prefix}_notifications_{$this->version}", $notifications, 86400 );
+		set_transient( "{$this->prefix}_notifications_{$this->version}", $notifications );
 	}
 
 	/**

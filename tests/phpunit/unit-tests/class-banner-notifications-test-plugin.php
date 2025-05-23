@@ -81,17 +81,16 @@ class Banner_Notifications_Test_Plugin extends Banner_Notifications_Unit_Test_Ca
 	 * @return void
 	 */
 	public function test_get_next_notification_with_notifications() {
-		// Set up mock notifications
+		$user = $this->factory->user->create();
+		wp_set_current_user( $user );
+
 		$this->set_mock_notifications();
 
-		// Get the next notification
 		$notification = $this->notifications->get_next_notification();
 
-		// Verify that we got a notification
 		$this->assertIsObject( $notification );
 		$this->assertEquals( 1, $notification->id );
 
-		// Clean up
 		$this->clear_mock_notifications();
 	}
 
