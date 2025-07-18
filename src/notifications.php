@@ -900,7 +900,7 @@ class Gocodebox_Banner_Notifier {
 	 * This allows us to pass in a comparison character via the notification rules
 	 * and get a true/false result.
 	 *
-	 * @since [version]
+	 * @since 1.1.0
 	 *
 	 * @param int    $a First integer to compare.
 	 * @param int    $b Second integer to compare.
