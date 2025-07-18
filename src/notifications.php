@@ -68,6 +68,7 @@ class Gocodebox_Banner_Notifier {
 		add_filter( "{$this->prefix}_notification_test_pmpro_revenue", array( $this, 'notification_test_pmpro_revenue' ), 10, 2 );
 		add_filter( "{$this->prefix}_notification_test_pmpro_num_orders", array( $this, 'notification_test_pmpro_num_orders' ), 10, 2 );
 		add_filter( "{$this->prefix}_notification_test_pmpro_setting", array( $this, 'notification_test_pmpro_setting' ), 10, 2 );
+		add_filter( "{$this->prefix}_notification_test_llms_setting", array( $this, 'notification_test_llms_setting' ), 10, 2 );
 		add_filter( "{$this->prefix}_notification_test_llms_revenue", array( $this, 'notification_test_llms_revenue' ), 10, 2 );
 		add_filter( "{$this->prefix}_notification_test_site_url_match", array( $this, 'notification_test_site_url_match' ), 10, 2 );
 		add_filter( "{$this->prefix}_notification_test_check_option", array( $this, 'notification_test_check_option' ), 10, 2 );
@@ -586,6 +587,31 @@ class Gocodebox_Banner_Notifier {
 		}
 
 		return pmpro_int_compare( $num_orders, $data[1], $data[0] );
+	}
+
+	/**
+	 * LifterLMS setting test.
+	 *
+	 * @param bool  $value The current test value.
+	 * @param array $data Array from the notification with [0] setting name to check [1] value to check for.
+	 * @returns bool true if an option if found with the specified name and value.
+	 */
+	function notification_test_llms_setting( $value, $data ) {
+		if ( ! is_array( $data ) || ! isset( $data[0] ) || ! isset( $data[1] ) ) {
+			return false;
+		}
+
+		// remove the pmpro_ prefix if given
+		if ( strpos( $data[0], 'lifterlms_' ) === 0 ) {
+			$data[0] = substr( $data[0], 6, strlen( $data[0] ) - 6 );
+		}
+
+		$option_value = get_option( 'lifterlms_' . $data[0] );
+		if ( isset( $option_value ) && $option_value == $data[1] ) {
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	/**
