@@ -70,6 +70,7 @@ class Gocodebox_Banner_Notifier {
 		add_filter( "{$this->prefix}_notification_test_pmpro_setting", array( $this, 'notification_test_pmpro_setting' ), 10, 2 );
 		add_filter( "{$this->prefix}_notification_test_llms_setting", array( $this, 'notification_test_llms_setting' ), 10, 2 );
 		add_filter( "{$this->prefix}_notification_test_llms_revenue", array( $this, 'notification_test_llms_revenue' ), 10, 2 );
+		add_filter( "{$this->prefix}_notification_test_llms_num_orders", array( $this, 'notification_test_llms_num_orders' ), 10, 2 );
 		add_filter( "{$this->prefix}_notification_test_site_url_match", array( $this, 'notification_test_site_url_match' ), 10, 2 );
 		add_filter( "{$this->prefix}_notification_test_check_option", array( $this, 'notification_test_check_option' ), 10, 2 );
 	}
@@ -542,20 +543,44 @@ class Gocodebox_Banner_Notifier {
 		}
 
 		if ( ! isset( $revenue ) ) {
-			$sql_query = "SELECT txns.post_date AS date,
-       					(sales.meta_value - COALESCE(refunds.meta_value, 0)) AS amount
+			$sql_query = "SELECT SUM(sales.meta_value - COALESCE(refunds.meta_value, 0)) AS amount
 						FROM {$wpdb->posts} AS txns
 						JOIN {$wpdb->postmeta} AS sales ON sales.post_id = txns.ID AND sales.meta_key = '_llms_amount'
 						LEFT JOIN {$wpdb->postmeta} AS refunds ON refunds.post_id = txns.ID AND refunds.meta_key = '_llms_refund_amount'
 						WHERE
 						        ( txns.post_status = 'llms-txn-succeeded' OR txns.post_status = 'llms-txn-refunded' )
 						    AND txns.post_type = 'llms_transaction'
-							ORDER BY txns.post_date ASC
 						;";
 			$revenue   = $wpdb->get_var( $sql_query );
 		}
 
 		return $this->int_compare( $revenue, $data[1], $data[0] );
+	}
+
+	/**
+	 * LifterLMS number of orders test.
+	 *
+	 * @param bool  $value The current test value.
+	 * @param array $data Array from the notification with [0] comparison operator and [1] number of orders.
+	 * @returns bool true if there are as many orders as specified.
+	 */
+	function notification_test_llms_num_orders( $value, $data ) {
+		global $wpdb;
+		static $num_orders;
+
+		if ( ! is_array( $data ) || ! isset( $data[0] ) || ! isset( $data[1] ) ) {
+			return false;
+		}
+
+		if ( ! isset( $num_orders ) ) {
+			$sql_query  = "SELECT COUNT(*)
+							FROM {$wpdb->posts} AS orders
+							WHERE post_status IN ('llms-active', 'llms-completed', 'llms-on-hold', 'llms-pending=cancel', 'llms-cancelled', 'llms-expired')
+							  AND post_type = 'llms_order'";
+			$num_orders = $wpdb->get_var( $sql_query );
+		}
+
+		return $this->int_compare( $num_orders, $data[1], $data[0] );
 	}
 
 	/**
