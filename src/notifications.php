@@ -537,10 +537,6 @@ class Gocodebox_Banner_Notifier {
 		global $wpdb;
 		static $revenue;
 
-		if ( ! function_exists( 'llms_int_compare' ) ) {
-			return false;
-		}
-
 		if ( ! is_array( $data ) || ! isset( $data[0] ) || ! isset( $data[1] ) ) {
 			return false;
 		}
@@ -559,7 +555,7 @@ class Gocodebox_Banner_Notifier {
 			$revenue   = $wpdb->get_var( $sql_query );
 		}
 
-		return llms_int_compare( $revenue, $data[1], $data[0] );
+		return $this->int_compare( $revenue, $data[1], $data[0] );
 	}
 
 	/**
@@ -871,5 +867,47 @@ class Gocodebox_Banner_Notifier {
 
 		update_user_meta( $current_user->ID, "{$this->prefix}_archived_notifications", $archived_notifications );
 		exit;
+	}
+
+
+	/**
+	 * Compare two integers using parameters similar to the version_compare function.
+	 * This allows us to pass in a comparison character via the notification rules
+	 * and get a true/false result.
+	 *
+	 * @since [version]
+	 *
+	 * @param int    $a First integer to compare.
+	 * @param int    $b Second integer to compare.
+	 * @param string $operator Operator to use, e.g. >, <, >=, <=, =, !=.
+	 * @return bool true or false based on the operator passed in. Returns null for invalid operators.
+	 */
+	function int_compare( $a, $b, $operator ) {
+		switch ( $operator ) {
+			case '>':
+				$r = (int) $a > (int) $b;
+				break;
+			case '<':
+				$r = (int) $a < (int) $b;
+				break;
+			case '>=':
+				$r = (int) $a >= (int) $b;
+				break;
+			case '<=':
+				$r = (int) $a <= (int) $b;
+				break;
+			case '=':
+			case '==':
+				$r = (int) $a == (int) $b;
+				break;
+			case '!=':
+			case '<>':
+				$r = (int) $a != (int) $b;
+				break;
+			default:
+				$r = null;
+		}
+
+		return $r;
 	}
 }
