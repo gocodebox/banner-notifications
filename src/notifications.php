@@ -8,6 +8,11 @@
  *     'notifications_url' => 'https://example.com/notifications.json',
  * ) );
  */
+defined( 'ABSPATH' ) || exit;
+
+if ( class_exists( 'Gocodebox_Banner_Notifier' ) ) {
+	return;
+}
 
 class Gocodebox_Banner_Notifier {
 
