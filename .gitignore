@@ -1,8 +1,0 @@
-dist
-node_modules
-tmp
-vendor
-i18n/*
-composer.lock
-.phpunit.result.cache
-
