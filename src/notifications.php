@@ -771,7 +771,7 @@ class Gocodebox_Banner_Notifier {
 			case '<':
 			case '>=':
 			case '<=':
-				return pmpro_int_compare( $option_value, $check_value, $check_type );
+				return $this->int_compare( $option_value, $check_value, $check_type );
 			case 'contains':
 				// Only proceed if $option_value is a string
 				return is_string( $option_value ) && strpos( $option_value, $check_value ) !== false;
