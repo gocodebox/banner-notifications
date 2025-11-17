@@ -711,7 +711,9 @@ class Gocodebox_Banner_Notifier {
 			// This is the case where we need to dig deeper into the array or object.
 			while ( ! empty( $option_to_check ) ) {
 				// Split the option_to_check into the top level option names and sub-options.
-				list( $current_option_to_check, $option_keys_to_check ) = explode( ':', $option_to_check, 2 );
+				$exploded = explode( ':', $option_to_check, 2 );
+				$current_option_to_check = $exploded[0];
+				$option_keys_to_check = isset( $exploded[1] ) ? $exploded[1] : '';
 
 				// Get the option_value for this layer of the array or object.
 				if ( ! isset( $option_value ) ) {
