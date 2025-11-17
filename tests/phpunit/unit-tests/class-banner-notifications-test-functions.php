@@ -212,6 +212,29 @@ class Banner_Notifications_Test_Functions extends Banner_Notifications_Unit_Test
 		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_string', 'contains', 'world' ) ) );
 		$this->assertFalse( $this->notifications->notification_test_check_option( false, array( 'test_string', 'contains', 'goodbye' ) ) );
 
+		// Test contains operator with array values
+		$test_array = array(
+			'license_keys' => array(
+				'l1M5-e88a86634sdfsdfsdfsdc1c6b377' => array(
+					'product_id' => 'lifterlms-com-infinity-bundle',
+					'status' => 1,
+					'license_key' => 'l1M5-e88a866347de2b8e23a7dec1c1c6b377',
+					'addons' => array(
+						'lifterlms-com-aircraft',
+						'lifterlms-com-formidable-forms',
+					),
+				),
+			),
+			'last_keys_cron_check' => 1754920940,
+		);
+		update_option( 'test_array', $test_array );
+		// Contains should match string values in the array, not keys
+		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_array', 'contains', 'lifterlms-com-infinity-bundle' ) ) );
+		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_array', 'contains', 'lifterlms-com-aircraft' ) ) );
+		// product_id is a key, not a value, so contains won't match it
+		$this->assertFalse( $this->notifications->notification_test_check_option( false, array( 'test_array', 'contains', 'product_id' ) ) );
+		delete_option( 'test_array' );
+
 		// Test notcontains operator
 		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_string', 'notcontains', 'goodbye' ) ) );
 		$this->assertFalse( $this->notifications->notification_test_check_option( false, array( 'test_string', 'notcontains', 'hello' ) ) );
