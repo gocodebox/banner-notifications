@@ -176,20 +176,69 @@ class Banner_Notifications_Test_Functions extends Banner_Notifications_Unit_Test
 	 * @return void
 	 */
 	public function test_notification_test_check_option() {
-		// Set a test option
+		// Set test options
 		update_option( 'test_option', 'test_value' );
+		update_option( 'test_numeric', 10 );
+		update_option( 'test_string', 'hello world' );
+		update_option( 'test_empty', '' );
+		update_option( 'test_zero', 0 );
 
-		// Test with the correct option and value
+		// Test equality operators: = and ==
 		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_option', '=', 'test_value' ) ) );
-
-		// Test with the correct option but wrong value
+		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_option', '==', 'test_value' ) ) );
 		$this->assertFalse( $this->notifications->notification_test_check_option( false, array( 'test_option', '=', 'wrong_value' ) ) );
+		$this->assertFalse( $this->notifications->notification_test_check_option( false, array( 'test_option', '==', 'wrong_value' ) ) );
+
+		// Test inequality operator: !=
+		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_option', '!=', 'wrong_value' ) ) );
+		$this->assertFalse( $this->notifications->notification_test_check_option( false, array( 'test_option', '!=', 'test_value' ) ) );
+
+		// Test comparison operators: >, <, >=, <=
+		update_option( 'test_numeric', 10 );
+		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_numeric', '>', 5 ) ) );
+		$this->assertFalse( $this->notifications->notification_test_check_option( false, array( 'test_numeric', '>', 15 ) ) );
+		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_numeric', '<', 15 ) ) );
+		$this->assertFalse( $this->notifications->notification_test_check_option( false, array( 'test_numeric', '<', 5 ) ) );
+		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_numeric', '>=', 10 ) ) );
+		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_numeric', '>=', 5 ) ) );
+		$this->assertFalse( $this->notifications->notification_test_check_option( false, array( 'test_numeric', '>=', 15 ) ) );
+		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_numeric', '<=', 10 ) ) );
+		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_numeric', '<=', 15 ) ) );
+		$this->assertFalse( $this->notifications->notification_test_check_option( false, array( 'test_numeric', '<=', 5 ) ) );
+
+		// Test contains operator
+		update_option( 'test_string', 'hello world' );
+		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_string', 'contains', 'hello' ) ) );
+		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_string', 'contains', 'world' ) ) );
+		$this->assertFalse( $this->notifications->notification_test_check_option( false, array( 'test_string', 'contains', 'goodbye' ) ) );
+
+		// Test notcontains operator
+		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_string', 'notcontains', 'goodbye' ) ) );
+		$this->assertFalse( $this->notifications->notification_test_check_option( false, array( 'test_string', 'notcontains', 'hello' ) ) );
+
+		// Test empty operator
+		update_option( 'test_empty', '' );
+		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_empty', 'empty', '' ) ) );
+		$this->assertFalse( $this->notifications->notification_test_check_option( false, array( 'test_string', 'empty', '' ) ) );
+		delete_option( 'test_nonexistent' );
+		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_nonexistent', 'empty', '' ) ) );
+
+		// Test notempty operator
+		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_string', 'notempty', '' ) ) );
+		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_numeric', 'notempty', '' ) ) );
+		$this->assertFalse( $this->notifications->notification_test_check_option( false, array( 'test_empty', 'notempty', '' ) ) );
+		delete_option( 'test_nonexistent2' );
+		$this->assertFalse( $this->notifications->notification_test_check_option( false, array( 'test_nonexistent2', 'notempty', '' ) ) );
 
 		// Test with a non-existent option
 		$this->assertFalse( $this->notifications->notification_test_check_option( false, array( 'non_existent_option', '=', 'test_value' ) ) );
 
 		// Clean up
 		delete_option( 'test_option' );
+		delete_option( 'test_numeric' );
+		delete_option( 'test_string' );
+		delete_option( 'test_empty' );
+		delete_option( 'test_zero' );
 	}
 
 }
