@@ -233,6 +233,23 @@ class Banner_Notifications_Test_Functions extends Banner_Notifications_Unit_Test
 		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_array', 'contains', 'lifterlms-com-aircraft' ) ) );
 		// product_id is a key, not a value, so contains won't match it
 		$this->assertFalse( $this->notifications->notification_test_check_option( false, array( 'test_array', 'contains', 'product_id' ) ) );
+
+		// Test colon-separated syntax for accessing nested keys
+		// Access license_keys array and check if it contains a value
+		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_array:license_keys', 'contains', 'lifterlms-com-infinity-bundle' ) ) );
+		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_array:license_keys', 'contains', 'lifterlms-com-aircraft' ) ) );
+		// product_id is still a key, not a value, so contains won't match it even when accessing nested structure
+		$this->assertFalse( $this->notifications->notification_test_check_option( false, array( 'test_array:license_keys', 'contains', 'product_id' ) ) );
+
+		// Test accessing deeply nested key directly (requires knowing the license key)
+		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_array:license_keys:l1M5-e88a86634sdfsdfsdfsdc1c6b377:product_id', '=', 'lifterlms-com-infinity-bundle' ) ) );
+		$this->assertTrue( $this->notifications->notification_test_check_option( false, array( 'test_array:license_keys:l1M5-e88a86634sdfsdfsdfsdc1c6b377:status', '=', 1 ) ) );
+		$this->assertFalse( $this->notifications->notification_test_check_option( false, array( 'test_array:license_keys:l1M5-e88a86634sdfsdfsdfsdc1c6b377:product_id', '=', 'wrong-product' ) ) );
+
+		// Test accessing non-existent nested key
+		$this->assertFalse( $this->notifications->notification_test_check_option( false, array( 'test_array:license_keys:nonexistent:product_id', '=', 'lifterlms-com-infinity-bundle' ) ) );
+		$this->assertFalse( $this->notifications->notification_test_check_option( false, array( 'test_array:nonexistent_key', 'contains', 'anything' ) ) );
+
 		delete_option( 'test_array' );
 
 		// Test notcontains operator
