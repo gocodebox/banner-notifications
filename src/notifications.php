@@ -442,8 +442,7 @@ class Gocodebox_Banner_Notifier {
 		}
 
 		if ( ! isset( $num_members ) ) {
-			$sqlQuery    = "SELECT COUNT(*) FROM ( SELECT user_id FROM $wpdb->pmpro_memberships_users WHERE status = 'active' GROUP BY user_id ) t1";
-			$num_members = $wpdb->get_var( $sqlQuery );
+			$num_members = $wpdb->get_var( "SELECT COUNT(*) FROM ( SELECT user_id FROM $wpdb->pmpro_memberships_users WHERE status = 'active' GROUP BY user_id ) t1" );
 		}
 
 		return pmpro_int_compare( $num_members, $data[1], $data[0] );
@@ -469,8 +468,7 @@ class Gocodebox_Banner_Notifier {
 		}
 
 		if ( ! isset( $num_levels ) ) {
-			$sqlQuery   = "SELECT COUNT(*) FROM $wpdb->pmpro_membership_levels";
-			$num_levels = $wpdb->get_var( $sqlQuery );
+			$num_levels = $wpdb->get_var( "SELECT COUNT(*) FROM $wpdb->pmpro_membership_levels" );
 		}
 
 		return pmpro_int_compare( $num_levels, $data[1], $data[0] );
@@ -496,8 +494,7 @@ class Gocodebox_Banner_Notifier {
 		}
 
 		if ( ! isset( $num_codes ) ) {
-			$sqlQuery  = "SELECT COUNT(*) FROM $wpdb->pmpro_discount_codes";
-			$num_codes = $wpdb->get_var( $sqlQuery );
+			$num_codes = $wpdb->get_var( "SELECT COUNT(*) FROM $wpdb->pmpro_discount_codes" );
 		}
 
 		return pmpro_int_compare( $num_codes, $data[1], $data[0] );
@@ -524,8 +521,7 @@ class Gocodebox_Banner_Notifier {
 		}
 
 		if ( ! isset( $revenue ) ) {
-			$sqlQuery = "SELECT SUM(total) FROM $wpdb->pmpro_membership_orders WHERE gateway_environment = 'live' AND status NOT IN('refunded', 'review', 'token', 'error')";
-			$revenue  = $wpdb->get_var( $sqlQuery );
+			$revenue = $wpdb->get_var( "SELECT SUM(total) FROM $wpdb->pmpro_membership_orders WHERE gateway_environment = 'live' AND status NOT IN('refunded', 'review', 'token', 'error')" );
 		}
 
 		return pmpro_int_compare( $revenue, $data[1], $data[0] );
@@ -548,15 +544,16 @@ class Gocodebox_Banner_Notifier {
 		}
 
 		if ( ! isset( $revenue ) ) {
-			$sql_query = "SELECT SUM(sales.meta_value - COALESCE(refunds.meta_value, 0)) AS amount
+			$revenue = $wpdb->get_var(
+				"SELECT SUM(sales.meta_value - COALESCE(refunds.meta_value, 0)) AS amount
 						FROM {$wpdb->posts} AS txns
 						JOIN {$wpdb->postmeta} AS sales ON sales.post_id = txns.ID AND sales.meta_key = '_llms_amount'
 						LEFT JOIN {$wpdb->postmeta} AS refunds ON refunds.post_id = txns.ID AND refunds.meta_key = '_llms_refund_amount'
 						WHERE
 						        ( txns.post_status = 'llms-txn-succeeded' OR txns.post_status = 'llms-txn-refunded' )
 						    AND txns.post_type = 'llms_transaction'
-						;";
-			$revenue   = $wpdb->get_var( $sql_query );
+						;"
+			);
 		}
 
 		return $this->int_compare( $revenue, $data[1], $data[0] );
@@ -578,11 +575,12 @@ class Gocodebox_Banner_Notifier {
 		}
 
 		if ( ! isset( $num_orders ) ) {
-			$sql_query  = "SELECT COUNT(*)
+			$num_orders = $wpdb->get_var(
+				"SELECT COUNT(*)
 							FROM {$wpdb->posts} AS orders
 							WHERE post_status IN ('llms-active', 'llms-completed', 'llms-on-hold', 'llms-pending=cancel', 'llms-cancelled', 'llms-expired')
-							  AND post_type = 'llms_order'";
-			$num_orders = $wpdb->get_var( $sql_query );
+							  AND post_type = 'llms_order'"
+			);
 		}
 
 		return $this->int_compare( $num_orders, $data[1], $data[0] );
@@ -608,8 +606,7 @@ class Gocodebox_Banner_Notifier {
 		}
 
 		if ( ! isset( $num_orders ) ) {
-			$sqlQuery   = "SELECT COUNT(*) FROM $wpdb->pmpro_membership_orders WHERE gateway_environment = 'live' AND status NOT IN('refunded', 'review', 'token', 'error')";
-			$num_orders = $wpdb->get_var( $sqlQuery );
+			$num_orders = $wpdb->get_var( "SELECT COUNT(*) FROM $wpdb->pmpro_membership_orders WHERE gateway_environment = 'live' AND status NOT IN('refunded', 'review', 'token', 'error')" );
 		}
 
 		return pmpro_int_compare( $num_orders, $data[1], $data[0] );
@@ -885,7 +882,7 @@ class Gocodebox_Banner_Notifier {
 			exit;
 		}
 
-		$notification_id = sanitize_text_field( $_POST['notification_id'] );
+		$notification_id = sanitize_text_field( wp_unslash( $_POST['notification_id'] ) );
 
 		$archived_notifications = get_user_meta( $current_user->ID, "{$this->prefix}_archived_notifications", true );
 
