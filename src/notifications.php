@@ -711,9 +711,9 @@ class Gocodebox_Banner_Notifier {
 			// This is the case where we need to dig deeper into the array or object.
 			while ( ! empty( $option_to_check ) ) {
 				// Split the option_to_check into the top level option names and sub-options.
-				$exploded = explode( ':', $option_to_check, 2 );
+				$exploded                = explode( ':', $option_to_check, 2 );
 				$current_option_to_check = $exploded[0];
-				$option_keys_to_check = isset( $exploded[1] ) ? $exploded[1] : '';
+				$option_keys_to_check    = isset( $exploded[1] ) ? $exploded[1] : '';
 
 				// Get the option_value for this layer of the array or object.
 				if ( ! isset( $option_value ) ) {
@@ -760,6 +760,22 @@ class Gocodebox_Banner_Notifier {
 			}
 
 			return false;
+		}
+
+		// Change the comparison to avoid fatal errors (ie. we cannot use > < >= <= if someone is running an old version of the library)
+		switch ( $check_type ) {
+			case 'gt':
+				$check_type = '>';
+				break;
+			case 'lt':
+				$check_type = '<';
+				break;
+			case 'gte':
+				$check_type = '>=';
+				break;
+			case 'lte':
+				$check_type = '<=';
+				break;
 		}
 
 		// We have a single value to compare. Let's do it.
