@@ -1,0 +1,3 @@
+significance: minor
+type: fixed
+entry: Fix some of the comparison operators that were calling an undefined method.
