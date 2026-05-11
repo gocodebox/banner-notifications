@@ -1,6 +1,13 @@
+Banner Notifications Changelog
+===================
 
-v1.0.1 - 2025-05-23
+v1.2.0 - 2026-05-07
 -------------------
+
+##### Bug Fixes
+
++ Fix some of the comparison operators that were calling an undefined method.
+
 
 v1.1.1 - 2025-08-19
 -------------------

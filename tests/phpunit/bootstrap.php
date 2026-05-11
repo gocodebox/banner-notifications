@@ -36,6 +36,9 @@ class Banner_Notifications_Tests_Bootstrap extends LLMS_Tests_Bootstrap {
 	/**
 	 * Load the plugin
 	 *
+	 * Load the standalone plugin source BEFORE LifterLMS core so the bundled
+	 * copy's class_exists / defined checks cause it to bail instead of ours.
+	 *
 	 * @since 1.0.0
 	 *
 	 * @return void
@@ -44,6 +47,14 @@ class Banner_Notifications_Tests_Bootstrap extends LLMS_Tests_Bootstrap {
 
 		// Assets are shared between phpunit and e2e tests.
 		$this->assets_dir = dirname( $this->tests_dir ) . '/assets';
+
+		// Pre-define constants so the bundled copy inside LifterLMS cannot claim them.
+		define( 'GOCODEBOX_BANNER_NOTIFICATIONS_PLUGIN_FILE', $this->plugin_dir . '/banner-notifications.php' );
+		define( 'GOCODEBOX_BANNER_NOTIFICATIONS_PLUGIN_DIR', $this->plugin_dir );
+
+		// Load our source first — the bundled copy will see class_exists() and bail.
+		require_once $this->plugin_dir . '/src/notifications.php';
+
 		parent::load();
 
 	}
