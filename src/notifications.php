@@ -391,6 +391,21 @@ class Gocodebox_Banner_Notifier {
 			return false;
 		}
 
+		switch ( $comparison ) {
+			case 'gt':
+				$comparison = '>';
+				break;
+			case 'lt':
+				$comparison = '<';
+				break;
+			case 'gte':
+				$comparison = '>=';
+				break;
+			case 'lte':
+				$comparison = '<=';
+				break;
+		}
+
 		// Check version.
 		if ( version_compare( $plugin_data['Version'], $version, $comparison ) ) {
 			return true;
